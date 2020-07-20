@@ -1,69 +1,59 @@
 const express = require("express");
-const FileReader = require('filereader')
 const ejs = require("ejs");
-const formidable = require("formidable")
+const upload = require("../model/multer.js");
+const BookData = require("../model/BookData");
 const addBookRouter = express.Router();
+const  logged = require('./logged.js');
+
 const fields = [
-		{
-			type:"text",
-			id:"name",
-			label:"BOOK NAME",
-			accept:""
-		},
-		{
-			type:"text",
-			id:"author",
-			label:"AUTHOR NAME",
-			accept:""
-		},
-		{
-			type:"text",
-			id:"genre",
-			label:"GENRE",
-			accept:""
-		},
-		{
-			type:"file",
-			id:"authorImg",
-			label:"IMAGE OF AUTHOR",
-			accept:"image/*"
-		}
+		{			type:"text",			id:"name",			label:"BOOK NAME",			accept:""		},
+		{			type:"text",			id:"author",		label:"AUTHOR NAME",			accept:""		},
+		{			type:"text",			id:"genre",			label:"GENRE",			accept:""		},
+		{			type:"file",			id:"bookImg",			label:"IMAGE OF BOOK",			accept:"image/*"	},
+		{			type:"file",			id:"authorImg",			label:"IMAGE OF AUTHOR",			accept:"image/*"		}		
 	]
 
-const router = nav =>{
+const router = allNav =>{
+
 	addBookRouter.get("/",(req,res) =>{
-		res.render("addBook",{
-			nav,
-			fields,
-			title:"add book",
-			head:"New Book"
+		logged(res,req.session.currentUser,()=>{
+				//only admin should access
+				if(req.session.currentUser=='admin'){
+					const nav = allNav.filter( elem => elem.show.includes('admin'));
+					res.render("addBook",{
+					nav,
+					fields,
+					title:"add book",
+					head:"New Book"
+				})
+				}else{//back to homepage if user is not admin
+					res.redirect('/home');
+				}
 		})
 		
-
 	})
 	addBookRouter.post('/book', function(req, res) {
-		new formidable.IncomingForm().parse(req, (err, fields, files) => {
-    if (err) {
-      console.error('Error', err)
-      throw err
-    }   
-		res.render('book',{
-		nav,
-		title:"new book",
-		head :`Book `,
-		books : {
-		title : fields.name,
-		author : fields.author,
-		genre : fields.genre,
-		img : ``
-		}
-		});
-	})
-  
+		upload(req,res,(err) =>{
+			if (err){
+				res.redirect('/admin');
+				console.log(err)
+			} 
+			else{
+				var item = {
+					title : req.body.name,
+					author :req.body.author,
+					genre : req.body.genre,
+					bookImg : req.files.bookImg[0].filename,
+					authorImg : req.files.authorImg[0].filename
+				}
+		  		var book =BookData(item);
+		  		book.save();
+		  		res.redirect('/books');
+				}
+		})
+		
 	});
-	addBookRouter.get("/:x", (req,res) => {
-	res.status(404).render('404');
-	});
+	
 
 	return addBookRouter;
 
